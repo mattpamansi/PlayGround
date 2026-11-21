@@ -6,7 +6,8 @@
   <title>Abdias — O Mestre das Construções</title>
   <style>
     html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07111f;font-family:Trebuchet MS,system-ui,sans-serif}
-    body{touch-action:none}.wrap{position:relative;width:100%;height:100%;display:grid;place-items:center}.game{position:relative;width:min(100vw,1280px);height:min(100vh,720px);overflow:hidden;background:#0e1b2d}.game canvas{display:block;width:100%;height:100%;image-rendering:auto}
+    body{touch-action:none}.wrap{position:relative;width:100%;height:100%;display:grid;place-items:center}.game{position:relative;width:100vw;height:100vh;max-height:100vh;overflow:hidden;background:#0e1b2d}.game canvas{display:block;width:100%;height:100%;image-rendering:auto}
+    .loading{position:absolute;z-index:20;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(145deg,#16263f,#0a1423);color:#fff}.loading.hidden{display:none}.loading h1{margin:0 0 6px;font-size:clamp(24px,4vw,46px);color:#ffd166;text-align:center}.loading h1 small{display:block;color:#dce9f7;font-size:.38em;letter-spacing:3px;margin-top:8px}.loader{width:min(420px,65vw);height:12px;border:2px solid #8395aa;border-radius:20px;margin:22px 0 28px;overflow:hidden}.loader i{display:block;width:0;height:100%;background:#ffd166;animation:load 2.2s ease forwards}@keyframes load{to{width:100%}}.saves{display:flex;gap:14px}.save{width:min(230px,27vw);border:2px solid #71849b;border-radius:16px;background:#111f32;padding:14px;text-align:left;color:#fff;cursor:pointer}.save:hover,.save:focus{border-color:#ffd166;background:#1a2e48}.save b{display:block;color:#ffd166;font-size:17px}.save span{display:block;margin-top:7px;color:#b9c8d8;font-size:13px}.orientation{display:none}@media(max-width:600px) and (orientation:portrait){.orientation{display:grid;position:absolute;z-index:30;inset:0;place-items:center;background:#07111f;color:#fff;text-align:center;padding:30px}.orientation b{color:#ffd166;font-size:22px}}
     .topbar{position:absolute;z-index:3;left:18px;right:18px;top:14px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}.hud{display:flex;gap:8px}.pill{background:#0a1423cc;border:2px solid #617790;border-radius:13px;padding:8px 12px;color:#fff;font-weight:900;letter-spacing:.5px;text-shadow:0 2px #000}.pill span{color:#ffd166}.title{position:absolute;right:0;top:0;text-align:right;color:#fff;text-shadow:0 3px #000}.title b{display:block;font-size:15px}.title small{color:#aabbd0}
     .dialog{position:absolute;z-index:5;left:50%;bottom:18px;transform:translateX(-50%);width:min(680px,calc(100% - 28px));min-height:86px;border-radius:18px;border:3px solid #f6cf73;background:#10192bf2;color:#fff;box-sizing:border-box;padding:12px 18px 12px 82px;box-shadow:0 10px 30px #0009;display:none}.dialog.show{display:block}.portrait{position:absolute;left:12px;top:10px;width:54px;height:54px;border-radius:50%;border:3px solid #fff;background:#d6a45d;display:grid;place-items:center;font-size:28px}.dialog strong{color:#ffd166}.dialog p{margin:5px 0 0;font-size:15px;line-height:1.35}.continue{position:absolute;right:12px;bottom:8px;color:#9eb1c8;font-size:12px}
     .toast{position:absolute;z-index:6;left:50%;top:78px;transform:translate(-50%,-20px);opacity:0;background:#16263dcc;color:#fff;border:2px solid #8092a8;border-radius:12px;padding:10px 14px;font-weight:900;transition:.25s;pointer-events:none}.toast.show{transform:translate(-50%,0);opacity:1}
@@ -15,6 +16,8 @@
   </style>
 </head>
 <body><div class="wrap"><main class="game" id="game">
+  <div class="loading" id="loading"><h1>ABDIAS<small>O MESTRE DAS CONSTRUÇÕES</small></h1><div class="loader"><i></i></div><div class="saves" id="saves"></div></div>
+  <div class="orientation"><div><b>Gire o dispositivo</b><br><br>Este jogo funciona em modo horizontal.</div></div>
   <canvas id="c"></canvas>
   <div class="topbar"><div class="hud"><div class="pill">🏗️ Peças <span id="parts">0/0</span></div><div class="pill" id="phaseName">FASE 1</div></div><div class="title"><b>ABDIAS</b><small>O Mestre das Construções</small></div></div>
   <div class="toast" id="toast"></div>
@@ -23,6 +26,14 @@
 </main></div>
 <script>
 const canvas=document.getElementById('c'),ctx=canvas.getContext('2d'),game=document.getElementById('game');
+const loading=document.getElementById('loading'),savesEl=document.getElementById('saves');
+const saveKey='abdias_builds_saves_v1';
+let saves=[];try{saves=JSON.parse(localStorage.getItem(saveKey)||'null')||[]}catch(e){saves=[]}
+for(let i=0;i<3;i++){if(!saves[i])saves[i]={level:0,parts:0,name:'Novo jogo'}}
+function renderSaves(){savesEl.innerHTML='';saves.forEach((s,i)=>{const b=document.createElement('button');b.className='save';b.innerHTML='<b>SAVE '+(i+1)+' — '+(s.name||'Novo jogo')+'</b><span>'+((s.level||0)===0?'Sem progresso':levels[s.level]?.name||'Aventura concluída')+'<br>'+('Peças: '+(s.parts||0))+'</span>';b.onclick=()=>startSave(i);savesEl.appendChild(b)})}
+function startSave(i){const s=saves[i]||{level:0,parts:0,name:'Novo jogo'};activeSave=i;loadLevel(Math.min(s.level||0,levels.length-1));loading.classList.add('hidden');talk(dialogues[level]||[],()=>cutscene=false)}
+let activeSave=0;
+setTimeout(renderSaves,600);
 let W=1280,H=720,scale=1;
 function resize(){const r=game.getBoundingClientRect();W=r.width;H=r.height;canvas.width=Math.round(W*devicePixelRatio);canvas.height=Math.round(H*devicePixelRatio);ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}resize();addEventListener('resize',resize);
 const keys={};addEventListener('keydown',e=>{keys[e.key.toLower?.()]=true;if(['ArrowLeft','ArrowRight','ArrowUp',' ','Enter','e','E'].includes(e.key))e.prevent});addEventListener('keyup',e=>keys[e.key.toLower?.()]=false);
@@ -52,7 +63,9 @@ const dialogues={
 2:[{n:'Jorge',i:'J',t:'Joel e eu encontramos o mecanismo antigo. Ele aceita cinco peças.'},{n:'Joel',i:'J',t:'Eu seguro as engrenagens; você resolve o caminho, Abdias.'},{n:'Abdias',i:'A',t:'Concordo. Construir é descobrir como as partes se ajudam.' }],
 3:[{n:'Helena',i:'H',t:'Fadson está aqui. Ele não entende por que reconstruímos tudo.'},{n:'Fadson',i:'Z',t:'Eu estava cochilando em paz. Vocês fazem barulho demais com essas construções! Hmpf.'},{n:'Abdias',i:'A',t:'Porque construir não é destruir. É deixar um lugar melhor para todos.'}]
 };
-talk(dialogues[0],()=>cutscene=false);
+// Tela de saves exibida ao iniciar.
+
+function saveProgress(){try{saves[activeSave]={level,parts,name:level===levels.length-1?'Aventura concluída':'Em andamento'};localStorage.setItem(saveKey,JSON.stringify(saves));renderSaves()}catch(e){}}
 
 function rects(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function update(){
@@ -68,6 +81,10 @@ function update(){
 }
 function finishLevel(){won=true;gate.open=true;toast(L.next);cutscene=true;setTimeout(()=>{if(level<levels.length-1){loadLevel(level+1);talk(dialogues[level],()=>cutscene=false)}else{talk([{n:'Abdias',i:'A',t:'A vila está viva outra vez. Nós construímos juntos.'},{n:'Fadson',i:'Z',t:'...Tudo bem. Mas podem fazer menos barulho amanhã.'},{n:'Helena',i:'H',t:'Uma nova aventura começa em cada sonho.'},{n:'Abdias',i:'A',t:'A CONSTRUÇÃO SEGUE ADIANTE!' }],()=>{cutscene=false;ended=true})}},700)}
 let ended=false;
+
+// Atualiza o save ao coletar peça e ao trocar de fase.
+const originalUpdateParts=updateParts;
+updateParts=function(){originalUpdateParts();saveProgress()};
 
 function cloud(x,y,s){ctx.fillStyle='#f4eee0cc';ctx.beginPath();ctx.arc(x,y,22*s,0,7);ctx.arc(x+30*s,y-10*s,30*s,0,7);ctx.arc(x+60*s,y,22*s,0,7);ctx.fill()}
 function drawScene(){
