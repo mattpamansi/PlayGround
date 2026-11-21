@@ -6,8 +6,10 @@ const SAVE='abdias-save-v1';let save=JSON.parse(localStorage.getItem(SAVE)||'{}'
 const names=['O Começo de Tudo','A Floresta das Engrenagens','A Vila dos Inventores','O Primeiro Ataque','O Vale das Máquinas','A Fortaleza de Fadson','A Grande Construção','O Confronto Final'];
 const themes=[['#74b9cf','#f0a24b','#4f8d62'],['#4b8c74','#9ab86b','#315c52'],['#d78a58','#f1bd69','#6c6a64'],['#7186a4','#b75d53','#4a4f63'],['#56849a','#d3a35b','#68715a'],['#5c5a78','#b05b50','#34344d'],['#7c9d91','#e3b35a','#4d6c62'],['#4d6682','#dc714f','#24273e']];
 const player={x:70,y:0,vx:0,vy:0,w:34,h:54,on:false,face:1,animTime:0,anim:'idle',frame:0,buildTimer:0,damageTimer:0,defeatTimer:0};
-let world,entities,particles=[],camera=0,goal=false,check={x:70,y:0},fadsonTimer=0;
-function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight;scale=Math.min(W/1100,H/650)}addEventListener('resize',resize);resize();
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+let world,entities,particles=[],camera={x:0,y:0},goal=false,check={x:70,y:0},fadsonTimer=0;
+const VIEW={w:1920,h:1080};let viewScale=1,viewX=0,viewY=0;
+function resize(){W=innerWidth;H=innerHeight;canvas.width=W;canvas.height=H;viewScale=Math.min(W/VIEW.w,H/VIEW.h);viewX=(W-VIEW.w*viewScale)/2;viewY=(H-VIEW.h*viewScale)/2;scale=viewScale}addEventListener('resize',resize);resize();
 function ground(y){return {x:-100,y,w:2200,h:800,type:'ground'}}
 function makeWorld(n){
  const gap=n>=1?[780,980]:[];const groundRects=[{x:-100,y:560,w:2200,h:140,type:'ground'}];
@@ -23,7 +25,7 @@ function makeWorld(n){
  if(n>=2) world.platforms.push({x:1100,y:420,w:150,h:22,type:'plat'});
  if(n>=4) world.platforms.push({x:1450,y:350,w:170,h:22,type:'plat'});
  if(n>=6) world.resources.push({x:1750,y:500,t:'engrenagem',got:false});
- player.x=70;player.y=410;player.vx=0;player.vy=0;camera=0;goal=false;check={x:70,y:410};particles=[];
+ player.x=70;player.y=410;player.vx=0;player.vy=0;camera={x:0,y:0};goal=false;check={x:70,y:410};particles=[];
  updateHUD();
 }
 function startLevel(n){level=n;makeWorld(n);mode='game';document.querySelectorAll('.panel').forEach(p=>p.classList.add('hidden'));document.getElementById('hud').classList.remove('hidden');document.getElementById('bottomHud').classList.remove('hidden');document.getElementById('touch').classList.add('game-active');document.getElementById('pause').classList.add('hidden');showBanner(n);narration(n)}
@@ -37,9 +39,12 @@ document.getElementById('nextDialog').onclick=closeDialog;
 function updateHUD(){document.getElementById('levelName').textContent=`${level+1}. ${names[level]}`;document.getElementById('objective').textContent=level===7?'Derrote Fadson e alcance o portão':'Leve os materiais ao portão azul';const el=document.getElementById('materials');el.innerHTML=Object.entries(mats).map(([k,v])=>`<span class="mat">${k==='madeira'?'▥':k==='pedra'?'◆':k==='metal'?'⬟':k==='corda'?'⌁':'⚙'} ${v}</span>`).join('')}
 function drawCloud(x,y,s){ctx.fillStyle='rgba(255,245,220,.45)';ctx.beginPath();ctx.arc(x,y,18*s,0,7);ctx.arc(x+24*s,y-8*s,25*s,0,7);ctx.arc(x+50*s,y,18*s,0,7);ctx.fill()}
 function rect(x,y,w,h,c,r=0){ctx.fillStyle=c;if(r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}else ctx.fillRect(x,y,w,h)}
-function draw(){let th=themes[level]||themes[0];ctx.fillStyle=th[0];ctx.fillRect(0,0,W,H);ctx.fillStyle=th[1];ctx.fillRect(0,H*.58,W,H*.42);
- for(let i=-1;i<5;i++){drawCloud(((i*310-camera*.12)%1550+1550)%1550,100+(i%3)*55,1)}
- ctx.save();ctx.translate(-camera,0);ctx.fillStyle='rgba(20,30,45,.12)';for(let i=0;i<6;i++)ctx.fillRect(300+i*330,180,160,380);
+function draw(){let th=themes[level]||themes[0];ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);ctx.fillStyle='#171529';ctx.fillRect(0,0,W,H);
+ ctx.setTransform(viewScale,0,0,viewScale,viewX,viewY);
+ ctx.fillStyle=th[0];ctx.fillRect(0,0,VIEW.w,VIEW.h);ctx.fillStyle=th[1];ctx.fillRect(0,VIEW.h*.58,VIEW.w,VIEW.h*.42);
+ for(let i=-1;i<10;i++){drawCloud(((i*310-camera.x*.12)%2450+2450)%2450,100+(i%3)*55,1)}
+ ctx.fillStyle='rgba(20,30,45,.12)';for(let i=-1;i<8;i++){const x=((i*330-camera.x*.28)%2640+2640)%2640-330;ctx.fillRect(x,180,160,380)}
+ ctx.save();ctx.translate(-camera.x,-camera.y);ctx.fillStyle='rgba(20,30,45,.12)';for(let i=0;i<8;i++)ctx.fillRect(300+i*330,180,160,380);
  world.grounds.forEach(g=>{rect(g.x,g.y,g.w,g.h,'#4c6d55');rect(g.x,g.y,g.w,14,'#78ad64');for(let x=g.x;x<g.x+g.w;x+=38)rect(x,g.y+14,18,8,'#355844')});
  world.platforms.forEach(p=>{rect(p.x,p.y,p.w,p.h,'#8a5a32',8);for(let x=p.x;x<p.x+p.w;x+=28)rect(x+5,p.y+5,18,5,'#d6a264')});
  world.resources.forEach(r=>{if(r.got)return;const c={madeira:'#d69a50',pedra:'#9aabb1',metal:'#cbd1d0',corda:'#dfb85b',engrenagem:'#e7c45c'}[r.t];ctx.save();ctx.translate(r.x,r.y+Math.sin(fadsonTimer*4+r.x*.01)*4);ctx.rotate(r.t==='engrenagem'?fadsonTimer*2:0);ctx.fillStyle=c;ctx.beginPath();ctx.arc(0,0,14,0,7);ctx.fill();if(r.t==='engrenagem'){ctx.strokeStyle='#fff1a8';ctx.lineWidth=3;for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(Math.cos(a)*8,Math.sin(a)*8);ctx.lineTo(Math.cos(a)*12,Math.sin(a)*12);ctx.stroke()}}ctx.rotate(r.t==='engrenagem'?-fadsonTimer*2:0);ctx.fillStyle='#fff4bd';ctx.fillText(r.t[0].toUpperCase(),-5,5);ctx.restore()});
@@ -68,7 +73,16 @@ function update(dt){if(mode!=='game'||paused||dialog)return;const left=keys.Arro
  world.platforms.concat(world.buildings.filter(b=>b.solid)).forEach(p=>{if(player.x+player.w>p.x&&player.x<p.x+p.w&&player.y+player.h>p.y&&player.y+player.h<p.y+28&&player.vy>=0){player.y=p.y-player.h;player.vy=0;player.on=true}});
  if(player.y>720){player.x=check.x;player.y=check.y;player.vx=0;player.vy=0}
  world.resources.forEach(r=>{if(!r.got&&Math.abs(player.x-r.x)<35&&Math.abs(player.y+27-r.y)<55){r.got=true;mats[r.t]=(mats[r.t]||0)+1;updateHUD();burst(r.x,r.y,'#f3ca70')}});
- camera+=(player.x-W*.38-camera)*Math.min(1,dt*4);camera=Math.max(0,Math.min(1500,W<800?900:1500));
+ const worldWidth=2200,worldHeight=1080;
+  const lookAhead=clamp(player.vx*.28,-180,180);
+  const targetX=player.x+player.w/2+lookAhead-VIEW.w*.5;
+  const targetY=player.y+player.h/2-VIEW.h*.52;
+  const maxX=Math.max(0,worldWidth-VIEW.w),maxY=Math.max(0,worldHeight-VIEW.h);
+  const desiredX=clamp(targetX,0,maxX),desiredY=clamp(targetY,0,maxY);
+  const follow=Math.min(1,dt*4.2);
+  camera.x+=((Number.isFinite(desiredX)?desiredX:0)-camera.x)*follow;
+  camera.y+=((Number.isFinite(desiredY)?desiredY:0)-camera.y)*follow;
+  camera.x=clamp(camera.x,0,maxX);camera.y=clamp(camera.y,0,maxY);
  world.gates.forEach(g=>{if(g.open&&player.x>g.x-30){completeLevel()}});fadsonTimer+=dt;
  particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=300*dt;p.life-=dt*.8});particles=particles.filter(p=>p.life>0);
 }
