@@ -31,7 +31,7 @@ const saveKey='abdias_builds_saves_v1';
 let saves=[];try{saves=JSON.parse(localStorage.getItem(saveKey)||'null')||[]}catch(e){saves=[]}
 for(let i=0;i<3;i++){if(!saves[i])saves[i]={level:0,parts:0,name:'Novo jogo'}}
 function renderSaves(){savesEl.innerHTML='';saves.forEach((s,i)=>{const b=document.createElement('button');b.className='save';b.innerHTML='<b>SAVE '+(i+1)+' — '+(s.name||'Novo jogo')+'</b><span>'+((s.level||0)===0?'Sem progresso':levels[s.level]?.name||'Aventura concluída')+'<br>'+('Peças: '+(s.parts||0))+'</span>';b.onclick=()=>startSave(i);savesEl.appendChild(b)})}
-function startSave(i){const s=saves[i]||{level:0,parts:0,name:'Novo jogo'};activeSave=i;loadLevel(Math.min(s.level||0,levels.length-1));loading.classList.add('hidden');talk(dialogues[level]||[],()=>cutscene=false)}
+function startSave(i){const s=saves[i]||{level:0,parts:0,name:'Novo jogo'};activeSave=i;loadLevel(Math.min(s.level||0,levels.length-1));loading.classList.add('hidden');resize();talk(dialogues[level]||[],()=>{cutscene=false;started=true})}
 let activeSave=0;
 setTimeout(renderSaves,600);
 const VW=1280,VH=720;let W=VW,H=VH,scale=1,offsetX=0,offsetY=0;
@@ -39,7 +39,7 @@ function resize(){
  const r=game.getBoundingClientRect();
  canvas.width=Math.round(r.width*devicePixelRatio);canvas.height=Math.round(r.height*devicePixelRatio);
  scale=Math.min(r.width/VW,r.height/VH);offsetX=(r.width-VW*scale)/2;offsetY=(r.height-VH*scale)/2;
- W=r.width;H=r.height;
+ W=VW;H=VH;
  ctx.setTransform(devicePixelRatio*scale,0,0,devicePixelRatio*scale,devicePixelRatio*offsetX,devicePixelRatio*offsetY);
 }
 resize();addEventListener('resize',resize);
@@ -48,7 +48,7 @@ function bind(id,key){const el=document.getElementById(id);const on=e=>{e.preven
 const dialog=document.getElementById('dialog'),speaker=document.getElementById('speaker'),line=document.getElementById('line'),portrait=document.getElementById('portrait');let convo=null,convoIndex=0;
 function talk(lines,onDone){convo={lines,onDone};convoIndex=0;showLine()}
 function showLine(){const x=convo.lines[convoIndex];speaker.textContent=x.n;line.textContent=x.t;portrait.textContent=x.i||x.n[0];dialog.classList.add('show')}
-function nextTalk(){if(!convo)return;if(++convoIndex>=convo.lines.length){dialog.classList.remove('show');const f=convo.onDone;convo=null;if(f)f()}else showLine()}
+function nextTalk(){if(!convo)return;if(++convoIndex>=convo.lines.length){dialog.classList.remove('show');const f=convo.onDone;convo=null;cutscene=false;Object.keys(keys).forEach(k=>keys[k]=false);if(f)f()}else showLine()}
 addEventListener('keydown',e=>{if(convo&&(e.key==='Enter'||e.key==='e'||e.key==='E'||e.key===' ')){nextTalk()}});dialog.addEventListener('pointerdown',nextTalk);
 function toast(s){const el=document.getElementById('toast');el.textContent=s;el.classList.add('show');clearTimeout(el.tm);el.tm=setTimeout(()=>el.classList.remove('show'),1800)}
 
