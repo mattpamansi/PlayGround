@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>VOID SHIFT</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <canvas id="game" aria-label="VOID SHIFT arcade game"></canvas>
+
+    <header class="hud">
+      <div class="brand"><i></i><span>VOID SHIFT</span></div>
+      <div class="stats">
+        <div><small>SCORE</small><strong id="score">00000</strong></div>
+        <div><small>BEST</small><strong id="best">00000</strong></div>
+      </div>
+      <button id="pauseBtn" class="icon-btn" aria-label="Pause game"><span>Ⅱ</span></button>
+    </header>
+
+    <section id="startPanel" class="panel">
+      <div class="panel-kicker">SECTOR 7 // SIGNAL LOST</div>
+      <h1>VOID<br><em>SHIFT</em></h1>
+      <p>Move the core. Dodge the red.</p>
+      <button id="startBtn" class="primary">ENTER THE VOID <span>→</span></button>
+      <div class="controls"><b>WASD</b> / <b>ARROWS</b> TO MOVE</div>
+    </section>
+
+    <section id="gameOverPanel" class="panel hidden">
+      <div class="panel-kicker">CONNECTION TERMINATED</div>
+      <h2>SIGNAL<br><em>LOST</em></h2>
+      <p id="finalScore">SCORE 00000</p>
+      <button id="restartBtn" class="primary">REINITIALIZE <span>↻</span></button>
+    </section>
+
+    <section id="pausePanel" class="panel compact hidden">
+      <div class="panel-kicker">SYSTEM STATUS</div>
+      <h2>PAUSED</h2>
+      <button id="resumeBtn" class="primary">RESUME <span>→</span></button>
+    </section>
+
+    <div id="flash" class="flash"></div>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
