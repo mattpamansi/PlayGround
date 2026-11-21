@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <title>Abdias — O Mestre das Construções</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07111f;font-family:Trebuchet MS,system-ui,sans-serif}
+    body{touch-action:none}.wrap{position:relative;width:100%;height:100%;display:grid;place-items:center}.game{position:relative;width:min(100vw,1280px);height:min(100vh,720px);overflow:hidden;background:#0e1b2d}.game canvas{display:block;width:100%;height:100%;image-rendering:auto}
+    .topbar{position:absolute;z-index:3;left:18px;right:18px;top:14px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}.hud{display:flex;gap:8px}.pill{background:#0a1423cc;border:2px solid #617790;border-radius:13px;padding:8px 12px;color:#fff;font-weight:900;letter-spacing:.5px;text-shadow:0 2px #000}.pill span{color:#ffd166}.title{position:absolute;right:0;top:0;text-align:right;color:#fff;text-shadow:0 3px #000}.title b{display:block;font-size:15px}.title small{color:#aabbd0}
+    .dialog{position:absolute;z-index:5;left:50%;bottom:18px;transform:translateX(-50%);width:min(680px,calc(100% - 28px));min-height:86px;border-radius:18px;border:3px solid #f6cf73;background:#10192bf2;color:#fff;box-sizing:border-box;padding:12px 18px 12px 82px;box-shadow:0 10px 30px #0009;display:none}.dialog.show{display:block}.portrait{position:absolute;left:12px;top:10px;width:54px;height:54px;border-radius:50%;border:3px solid #fff;background:#d6a45d;display:grid;place-items:center;font-size:28px}.dialog strong{color:#ffd166}.dialog p{margin:5px 0 0;font-size:15px;line-height:1.35}.continue{position:absolute;right:12px;bottom:8px;color:#9eb1c8;font-size:12px}
+    .toast{position:absolute;z-index:6;left:50%;top:78px;transform:translate(-50%,-20px);opacity:0;background:#16263dcc;color:#fff;border:2px solid #8092a8;border-radius:12px;padding:10px 14px;font-weight:900;transition:.25s;pointer-events:none}.toast.show{transform:translate(-50%,0);opacity:1}
+    .touch{position:absolute;z-index:4;inset:auto 12px 18px;display:none;justify-content:space-between;pointer-events:none}.cluster{display:flex;gap:10px}.btn{pointer-events:auto;width:58px;height:58px;border-radius:50%;border:3px solid #fff9;background:#132239c9;color:#fff;font-size:24px;font-weight:900;display:grid;place-items:center;user-select:none}.btn.small{font-size:13px}.btn.action{background:#b26937dd}.btn:active,.btn.active{transform:scale(.92);background:#d48a48}
+    @media(max-width:900px),(pointer:coarse){.touch{display:flex}.dialog{bottom:92px}.topbar{top:8px}.title{display:none}}
+  </style>
+</head>
+<body><div class="wrap"><main class="game" id="game">
+  <canvas id="c"></canvas>
+  <div class="topbar"><div class="hud"><div class="pill">🏗️ Peças <span id="parts">0/0</span></div><div class="pill" id="phaseName">FASE 1</div></div><div class="title"><b>ABDIAS</b><small>O Mestre das Construções</small></div></div>
+  <div class="toast" id="toast"></div>
+  <div class="dialog" id="dialog"><div class="portrait" id="portrait">A</div><strong id="speaker">Abdias</strong><p id="line"></p><div class="continue">ENTRAR / E / TOQUE PARA CONTINUAR</div></div>
+  <div class="touch"><div class="cluster"><div class="btn" id="left">◀</div><div class="btn" id="right">▶</div></div><div class="cluster"><div class="btn small" id="jump">PULAR</div><div class="btn action" id="use">E</div></div></div>
+</main></div>
+<script>
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d'),game=document.getElementById('game');
+let W=1280,H=720,scale=1;
+function resize(){const r=game.getBoundingClientRect();W=r.width;H=r.height;canvas.width=Math.round(W*devicePixelRatio);canvas.height=Math.round(H*devicePixelRatio);ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}resize();addEventListener('resize',resize);
+const keys={};addEventListener('keydown',e=>{keys[e.key.toLower?.()]=true;if(['ArrowLeft','ArrowRight','ArrowUp',' ','Enter','e','E'].includes(e.key))e.prevent});addEventListener('keyup',e=>keys[e.key.toLower?.()]=false);
+function bind(id,key){const el=document.getElementById(id);const on=e=>{e.preventDefault();keys[key]=true;el.classList.add('active')};const off=e=>{e.preventDefault();keys[key]=false;el.classList.remove('active')};el.addEventListener('pointerdown',on);el.addEventListener('pointerup',off);el.addEventListener('pointercancel',off);el.addEventListener('pointerleave',off)}bind('left','arrowleft');bind('right','arrowright');bind('jump',' ');bind('use','e');
+const dialog=document.getElementById('dialog'),speaker=document.getElementById('speaker'),line=document.getElementById('line'),portrait=document.getElementById('portrait');let convo=null,convoIndex=0;
+function talk(lines,onDone){convo={lines,onDone};convoIndex=0;showLine()}
+function showLine(){const x=convo.lines[convoIndex];speaker.textContent=x.n;line.textContent=x.t;portrait.textContent=x.i||x.n[0];dialog.classList.add('show')}
+function nextTalk(){if(!convo)return;if(++convoIndex>=convo.lines.length){dialog.classList.remove('show');const f=convo.onDone;convo=null;if(f)f()}else showLine()}
+addEventListener('keydown',e=>{if(convo&&(e.key==='Enter'||e.key==='e'||e.key==='E'||e.key===' ')){nextTalk()}});dialog.addEventListener('pointerdown',nextTalk);
+function toast(s){const el=document.getElementById('toast');el.textContent=s;el.classList.add('show');clearTimeout(el.tm);el.tm=setTimeout(()=>el.classList.remove('show'),1800)}
+
+const player={x:100,y:520,w:34,h:66,vx:0,vy:0,on:false,dir:1,facing:'right'};
+let level=0,parts=0,won=false,cutscene=true,started=false,cloudT=0;
+const levels=[
+ {name:'Fase 1 — Oficina',goal:'Construa a ponte',need:3,sky:['#f1b05b','#74b6c4'],ground:'#77543a',platforms:[[0,620,1280,100],[420,510,180,22],[760,430,180,22]],collect:[[550,465],[825,385],[1080,570]],gate:[1160,530],spawn:[90,520],next:'A ponte segura',story:'Fanel encontrou placas antigas. O rio não espera!' },
+ {name:'Fase 2 — Torre do Farol',goal:'Repare o farol',need:4,sky:['#a9749a','#31385f'],ground:'#4d4952',platforms:[[0,620,1280,100],[260,520,150,22],[520,450,150,22],[750,370,150,22],[980,470,170,22]],collect:[[310,475],[585,405],[815,325],[1050,425]],gate:[1120,370],spawn:[70,520],next:'O farol acendeu',story:'Helena avista Fadson nas nuvens.' },
+ {name:'Fase 3 — Vale dos Engrenagens',goal:'Reative os portões',need:5,sky:['#75a6bd','#204869'],ground:'#4f6746',platforms:[[0,620,1280,100],[180,530,130,22],[360,440,130,22],[560,350,130,22],[760,460,130,22],[960,350,180,22]],collect:[[220,485],[400,395],[600,305],[815,415],[1040,305]],gate:[1160,250],spawn:[70,520],next:'As engrenagens giraram',story:'Joel e Jorge ajudam Abdias a reconstruir.' },
+ {name:'Fase 4 — Coração da Vila',goal:'Funda a ponte final',need:6,sky:['#df8a62','#4f7e93'],ground:'#654638',platforms:[[0,620,1280,100],[220,510,180,22],[470,430,150,22],[690,350,150,22],[900,440,170,22]],collect:[[290,465],[520,385],[740,305],[970,395],[1120,575],[80,575]],gate:[1150,520],spawn:[60,520],next:'A vila foi salva',story:'Fadson acorda irritado e encara Abdias.' }
+];
+let L,items=[],gate={};
+function loadLevel(i){level=i;L=levels[i];parts=0;won=false;player.x=L.spawn[0];player.y=L.spawn[1];player.vx=0;player.vy=0;items=L.collect.map((p,j)=>({x:p[0],y:p[1],got:false,b:j}));gate={x:L.gate[0],y:L.gate[1],w:75,h:100};cutscene=true;document.getElementById('phaseName').textContent=L.name.toUpperCase();updateParts();}
+function updateParts(){document.getElementById('parts').textContent=parts+'/'+L.need}
+loadLevel(0);
+const dialogues={
+0:[{n:'Fanel',i:'F',t:'Abdias! Fadson derrubou parte da ponte. Precisamos das três peças azuis.'},{n:'Abdias',i:'A',t:'Eu desenhei e construo melhor. Vamos colocar cada peça no seu lugar!'},{n:'Fadson',i:'Z',t:'Zzz... está me acordando? Eu odeio tudo que vocês constroem. ZzZ!' }],
+1:[{n:'Helena',i:'H',t:'O farol é a única forma de guiar os viajantes pelas montanhas.'},{n:'Abdias',i:'A',t:'Então vamos subir! Quatro peças devem acender a lente.'},{n:'Fadson',i:'Z',t:'Um farol ilumina minhas sonecas. Isso é muito irritante...' }],
+2:[{n:'Jorge',i:'J',t:'Joel e eu encontramos o mecanismo antigo. Ele aceita cinco peças.'},{n:'Joel',i:'J',t:'Eu seguro as engrenagens; você resolve o caminho, Abdias.'},{n:'Abdias',i:'A',t:'Concordo. Construir é descobrir como as partes se ajudam.' }],
+3:[{n:'Helena',i:'H',t:'Fadson está aqui. Ele não entende por que reconstruímos tudo.'},{n:'Fadson',i:'Z',t:'Eu estava cochilando em paz. Vocês fazem barulho demais com essas construções! Hmpf.'},{n:'Abdias',i:'A',t:'Porque construir não é destruir. É deixar um lugar melhor para todos.'}]
+};
+talk(dialogues[0],()=>cutscene=false);
+
+function rects(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function update(){
+ if(convo)return;
+ const move=(keys.arrowleft?-1:0)+(keys.arrowright?1:0);if(move){player.vx+=(move*0.75-player.vx*.2);player.dir=move;player.facing=move>0?'right':'left'}else player.vx*=.78;
+ if((keys[' ']||keys.arrowup)&&player.on){player.vy=-14.2;player.on=false}
+ player.vy+=.72;player.vx=Math.max(-7,Math.min(7,player.vx));player.x+=player.vx;player.y+=player.vy;player.on=false;
+ for(const p of L.platforms){if(player.vy>=0&&player.x+player.w>p[0]&&player.x<p[0]+p[2]&&player.y+player.h>=p[1]&&player.y+player.h<=p[1]+20){player.y=p[1]-player.h;player.vy=0;player.on=true}}
+ if(player.x<0)player.x=0;if(player.x+player.w>W)player.x=W-player.w;if(player.y>H+100){player.x=L.spawn[0];player.y=L.spawn[1];player.vy=0}
+ for(const it of items){if(!it.got&&Math.abs(player.x+player.w/2-it.x)<34&&Math.abs(player.y+player.h/2-it.y)<42){it.got=true;parts++;updateParts();toast('Peça recolhida '+parts+'/'+L.need)}}
+ if(keys.e){if(!player.useLock){if(parts>=L.need&&rects(player,gate)){finishLevel()}player.useLock=true}}else player.useLock=false;
+ if(parts===L.need&&rects(player,gate)&&!won)toast('Pressione E para construir');
+}
+function finishLevel(){won=true;gate.open=true;toast(L.next);cutscene=true;setTimeout(()=>{if(level<levels.length-1){loadLevel(level+1);talk(dialogues[level],()=>cutscene=false)}else{talk([{n:'Abdias',i:'A',t:'A vila está viva outra vez. Nós construímos juntos.'},{n:'Fadson',i:'Z',t:'...Tudo bem. Mas podem fazer menos barulho amanhã.'},{n:'Helena',i:'H',t:'Uma nova aventura começa em cada sonho.'},{n:'Abdias',i:'A',t:'A CONSTRUÇÃO SEGUE ADIANTE!' }],()=>{cutscene=false;ended=true})}},700)}
+let ended=false;
+
+function cloud(x,y,s){ctx.fillStyle='#f4eee0cc';ctx.beginPath();ctx.arc(x,y,22*s,0,7);ctx.arc(x+30*s,y-10*s,30*s,0,7);ctx.arc(x+60*s,y,22*s,0,7);ctx.fill()}
+function drawScene(){
+ const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,L.sky[0]);g.addColorStop(1,L.sky[1]);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ cloudT+=.002;cloud(80+cloudT*W*.4,100,1);cloud(850-cloudT*W*.25,150,.75);cloud(650,65,.55);
+ ctx.fillStyle='#56735c';ctx.beginPath();ctx.moveTo(0,520);for(let x=0;x<=W;x+=160){ctx.quadraticCurveTo(x+80,420+(x%320?25:-30),x+160,520)}ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+ ctx.fillStyle='#cdb88a';ctx.globalAlpha=.45;ctx.fillRect(0,570,W,H-570);ctx.globalAlpha=1;
+ for(const p of L.platforms){ctx.fillStyle=p[1]>=600?L.ground:'#6e5842';ctx.fillRect(p[0],p[1],p[2],p[3]);ctx.fillStyle='#d7b66b';ctx.fillRect(p[0],p[1],p[2],6)}
+ // river / foreground
+ if(level===0){ctx.fillStyle='#3e86a4';ctx.fillRect(0,620,W,100);ctx.strokeStyle='#7fc1d0';ctx.lineWidth=3;for(let x=-20;x<W;x+=55){ctx.beginPath();ctx.moveTo(x,665+Math.sin(x)*7);ctx.quadraticCurveTo(x+25,650,x+50,665+Math.sin(x)*7);ctx.stroke()}}
+ // Items
+ for(const it of items){if(!it.got){ctx.save();ctx.translate(it.x,it.y);ctx.rotate(Math.sin(Date.now()/300+it.b)*.12);ctx.fillStyle='#66c7dc';ctx.strokeStyle='#d9f8ff';ctx.lineWidth=4;ctx.fillRect(-15,-15,30,30);ctx.strokeRect(-15,-15,30,30);ctx.fillStyle='#fff';ctx.fillRect(-4,-11,8,22);ctx.fillRect(-11,-4,22,8);ctx.restore();ctx.shadowColor='#7deaff';ctx.shadowBlur=14}}
+ ctx.shadowBlur=0;
+ // gate
+ ctx.fillStyle=parts>=L.need?'#ffd166':'#27384a';ctx.fillRect(gate.x,gate.y,gate.w,gate.h);ctx.fillStyle='#172232';ctx.fillRect(gate.x+12,gate.y+18,gate.w-24,gate.h-18);ctx.fillStyle='#e8cf83';ctx.fillRect(gate.x+gate.w/2-3,gate.y+52,6,6);ctx.fillStyle='#fff';ctx.font='900 14px Trebuchet MS';ctx.textAlign='center';ctx.fillText(parts>=L.need?'E':'META',gate.x+gate.w/2,gate.y-10);
+ drawCharacters();
+ if(ended){ctx.fillStyle='#07111fd9';ctx.fillRect(0,0,W,H);ctx.fillStyle='#ffd166';ctx.textAlign='center';ctx.font='900 58px Trebuchet MS';ctx.fillText('VILA RECONSTRUÍDA!',W/2,H/2-30);ctx.fillStyle='#fff';ctx.font='24px Trebuchet MS';ctx.fillText('Abdias, Fanel, Helena, Joel e Jorge',W/2,H/2+25);ctx.font='17px Trebuchet MS';ctx.fillText('Fim da aventura',W/2,H/2+65)}
+}
+function drawPerson(x,y,black,blue,muscle,tall,name,dir=1){ctx.save();ctx.translate(x,y);ctx.scale(dir,1);const s=tall||1;ctx.scale(s,s);ctx.translate(0,-(tall-1)*65);
+ // shadow
+ ctx.fillStyle='#0004';ctx.beginPath();ctx.ellipse(0,70,28,8,0,0,7);ctx.fill();ctx.fillStyle='#263b5a';ctx.fillRect(-15,35,12,36);ctx.fillRect(3,35,12,36);ctx.fillStyle='#171f32';ctx.fillRect(-16,66,15,8);ctx.fillRect(3,66,15,8);ctx.fillStyle=black?'#17100c':'#9a6042';ctx.fillRect(-23,10,46,28);ctx.fillStyle=black?'#17100c':'#9a6042';ctx.beginPath();ctx.arc(0,2,20,0,7);ctx.fill();ctx.fillStyle=muscle?'#2d1a13':'#17100c';ctx.beginPath();ctx.arc(0,-8,21,Math.PI,Math.PI*2);ctx.fill();ctx.fillStyle='#98ddf4';ctx.beginPath();ctx.arc(7,-2,3,0,7);ctx.fill();ctx.fillStyle='#111';ctx.fillRect(-23,18,46,22);ctx.fillStyle='#efb24d';ctx.fillRect(-23,18,46,6);ctx.restore();}
+function drawCharacters(){drawPerson(player.x+player.w/2,player.y+player.h,1,1,1,1.05,'Abdias',player.dir);if(level===3){drawPerson(gate.x-65,gate.y+gate.h,1,0,0,1,'Fadson',-1)}
+ // NPC companions
+ if(level===0){drawPerson(330,560,1,0,0,.9,'Fanel',1)}if(level===1){drawPerson(310,560,0,0,0,.9,'Helena',1)}if(level===2){drawPerson(860,560,1,0,0,.9,'Joel',-1);drawPerson(920,560,1,0,0,.9,'Jorge',-1)}}
+function loop(){update();drawScene();requestAnimationFrame(loop)}loop();
+</script></body></html>
